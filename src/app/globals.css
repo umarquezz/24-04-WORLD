@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: #020617;
+  --color-foreground: #F8FAFC;
+  --color-primary: #1D4ED8;
+  --color-primary-hover: #2563EB;
+  --color-secondary: #0F172A;
+  --color-accent: #38BDF8;
+  --color-card: #0B132B;
+  --color-card-border: rgba(255, 255, 255, 0.05);
+
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+:root {
+  --background: #020617;
+  --foreground: #F8FAFC;
+}
+
+body {
+  background-color: var(--background);
+  background-image: 
+    radial-gradient(circle at 50% -20%, rgba(29, 78, 216, 0.15), transparent 80%),
+    linear-gradient(rgba(255,255,255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255, 0.02) 1px, transparent 1px);
+  background-size: 100% 100%, 40px 40px, 40px 40px;
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #020617; 
+}
+::-webkit-scrollbar-thumb {
+  background: #1E293B; 
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #334155; 
+}
+
+.glass {
+  background: rgba(11, 19, 43, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Otimização mobile extra */
+@media (max-width: 640px) {
+  body {
+    background-size: 100% 100%, 30px 30px, 30px 30px;
+  }
+}
+
