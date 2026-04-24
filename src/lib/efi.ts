@@ -29,7 +29,7 @@ export async function createImmediatePixCharge(orderId: string, amountBrl: numbe
     valor: {
       original: (amountBrl / 100).toFixed(2), // Converte centavos para decimal 0.00
     },
-    chave: process.env.EFI_PIX_KEY, // Chave Pix cadastrada na Efí
+    chave: process.env.EFI_PIX_KEY as string,
     solicitacaoPagador: `Pedido #${orderId}`,
     infoAdicionais: [
       {
@@ -43,8 +43,13 @@ export async function createImmediatePixCharge(orderId: string, amountBrl: numbe
     ],
   };
 
+  if (!body.chave) {
+    throw new Error('Variável de ambiente EFI_PIX_KEY não configurada.');
+  }
+
   try {
     // 1. Criar a cobrança
+    // @ts-ignore - O SDK tem definições de tipos incompletas
     const charge = await efiPay.pixCreateImmediateCharge([], body);
 
     if (!charge.loc || !charge.loc.id) {
