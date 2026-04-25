@@ -7,14 +7,23 @@ import os from 'os';
  * Utilitário para integração com a API Pix da Efí Bank (Gerencianet)
  */
 
-// Lógica para lidar com o certificado em ambiente Serverless (Netlify/Vercel)
+// Lógica robusta para o certificado na Netlify/Vercel
 let certificatePath = path.resolve(process.env.EFI_CERT_PATH || './certificates/cert.p12');
 
 if (process.env.EFI_CERT_BASE64) {
-  // Se existir a variável Base64, criamos um arquivo temporário no sistema
-  const tempPath = path.join(os.tmpdir(), 'cert.p12');
+  // Limpar possíveis espaços ou quebras de linha que o usuário possa ter colado sem querer
+  const cleanBase64 = process.env.EFI_CERT_BASE64.trim().replace(/\s/g, '');
+  
+  // Usar um nome único baseado na versão para forçar a atualização se mudar
+  const tempPath = path.join(os.tmpdir(), `cert_${cleanBase64.length}.p12`);
+  
   if (!fs.existsSync(tempPath)) {
-    fs.writeFileSync(tempPath, Buffer.from(process.env.EFI_CERT_BASE64, 'base64'));
+    try {
+      fs.writeFileSync(tempPath, Buffer.from(cleanBase64, 'base64'));
+      console.log('Certificado temporário criado com sucesso em:', tempPath);
+    } catch (e) {
+      console.error('Erro ao escrever certificado temporário:', e);
+    }
   }
   certificatePath = tempPath;
 }
@@ -37,12 +46,8 @@ export default efiPay;
  */
 export async function createImmediatePixCharge(orderId: string, amountBrl: number, customerEmail: string) {
   const body = {
-    calendario: {
-      expiracao: 3600, // 1 hora
-    },
-    valor: {
-      original: (amountBrl / 100).toFixed(2),
-    },
+    calendario: { expiracao: 3600 },
+    valor: { original: (amountBrl / 100).toFixed(2) },
     chave: process.env.EFI_PIX_KEY as string,
     solicitacaoPagador: `Pedido #${orderId}`,
     infoAdicionais: [
@@ -73,7 +78,9 @@ export async function createImmediatePixCharge(orderId: string, amountBrl: numbe
       qrCodeLink: qrCodeData.linkVisualizacao,
     };
   } catch (error: any) {
-    console.error('Efí API Raw Error:', JSON.stringify(error, null, 2));
-    throw error;
+    // Se o erro for de certificado, vamos dar uma pista melhor
+    const errorMessage = typeof error === 'string' ? error : (error.message || JSON.stringify(error));
+    console.error('Efí API Raw Error:', errorMessage);
+    throw errorMessage;
   }
 }
