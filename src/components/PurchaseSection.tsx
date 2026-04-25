@@ -58,7 +58,7 @@ export function PurchaseSection({ product, user, supabase, className }: Purchase
       })
       const data = await res.json()
       if (!res.ok) {
-        setError(data.error || 'Erro ao criar pedido')
+        setError(data.details ? `${data.error}: ${JSON.stringify(data.details)}` : data.error || 'Erro ao criar pedido')
       } else {
         setOrderId(data.order_id)
         setCheckoutUrl(data.checkout_url)
