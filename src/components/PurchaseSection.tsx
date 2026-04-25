@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { Copy, QrCode, CheckCircle2, ShieldCheck, Loader2 } from 'lucide-react'
+import { Copy, QrCode, CheckCircle2, ShieldCheck, Loader2, X, Info } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface Credential {
@@ -21,15 +21,15 @@ export function PurchaseSection({ product, user, supabase, className }: Purchase
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
-  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null)
   const [orderId, setOrderId] = useState<string | null>(null)
   const [polling, setPolling] = useState(false)
+  const [pixData, setPixData] = useState<{ qrCode: string, payload: string } | null>(null)
   
   const [credential, setCredential] = useState<Credential | null>(null)
   const [email, setEmail] = useState('')
   const [copied, setCopied] = useState<string | null>(null)
 
-  // Polling
+  // Polling para verificar pagamento
   useEffect(() => {
     if (!orderId || !polling) return
     const interval = setInterval(async () => {
@@ -39,7 +39,7 @@ export function PurchaseSection({ product, user, supabase, className }: Purchase
         if (data.status === 'paid' && data.credential) {
           setCredential(data.credential)
           setPolling(false)
-          setCheckoutUrl(null)
+          setPixData(null)
         }
       } catch (err) { }
     }, 3000)
@@ -61,7 +61,10 @@ export function PurchaseSection({ product, user, supabase, className }: Purchase
         setError(data.details ? `${data.error}: ${JSON.stringify(data.details)}` : data.error || 'Erro ao criar pedido')
       } else {
         setOrderId(data.order_id)
-        setCheckoutUrl(data.checkout_url)
+        setPixData({
+          qrCode: data.qr_code_image,
+          payload: data.pix_payload
+        })
         setPolling(true)
       }
     } catch {
@@ -91,6 +94,7 @@ export function PurchaseSection({ product, user, supabase, className }: Purchase
     setTimeout(() => setCopied(null), 2000)
   }
 
+  // --- UI DE SUCESSO (PÓS-PAGAMENTO) ---
   if (credential) {
     return (
       <div className={cn("bg-green-500/5 border border-green-500/20 rounded-2xl p-6 sm:p-8 text-center animate-in zoom-in-95 duration-500", className)}>
@@ -133,35 +137,6 @@ export function PurchaseSection({ product, user, supabase, className }: Purchase
               </div>
             </div>
           )}
-        </div>
-      </div>
-    )
-  }
-
-  if (checkoutUrl) {
-    return (
-      <div className={cn("bg-accent/5 border border-accent/20 rounded-2xl p-6 sm:p-10 text-center animate-in fade-in duration-500", className)}>
-        <div className="w-14 h-14 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-5 border border-accent/20">
-          <QrCode size={28} className="text-accent animate-pulse" />
-        </div>
-        <h2 className="text-lg sm:text-xl font-bold text-white mb-2">Aguardando seu PIX</h2>
-        <p className="text-white/50 text-xs sm:text-sm mb-8">O link de pagamento já está pronto. Assim que pagar, sua entrega ocorre aqui!</p>
-        
-        <a
-          href={checkoutUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block w-full bg-primary hover:bg-primary-hover text-white font-bold py-4 rounded-xl transition shadow-xl shadow-primary/20 mb-6 text-sm"
-        >
-          Pagar via PIX agora
-        </a>
-        
-        <div className="flex items-center justify-center gap-2 text-[10px] text-white/30 bg-black/10 py-2.5 rounded-lg border border-white/5">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-accent"></span>
-          </span>
-          Sincronizando pagamento automaticamente...
         </div>
       </div>
     )
@@ -223,6 +198,68 @@ export function PurchaseSection({ product, user, supabase, className }: Purchase
             </button>
           </div>
         </form>
+      )}
+
+      {/* --- MODAL DE PIX (SOBREPOSIÇÃO) --- */}
+      {pixData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-[#0c0c0e] border border-white/10 rounded-3xl w-full max-w-md p-6 sm:p-8 relative shadow-2xl animate-in zoom-in-95 duration-300">
+            <button 
+              onClick={() => { setPixData(null); setPolling(false); }}
+              className="absolute top-4 right-4 text-white/30 hover:text-white transition"
+            >
+              <X size={24} />
+            </button>
+
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 border border-accent/20 text-accent text-[10px] font-bold uppercase tracking-widest mb-4">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-accent"></span>
+                </span>
+                Aguardando Pagamento
+              </div>
+              <h3 className="text-xl font-bold text-white">Pagamento via PIX</h3>
+              <p className="text-white/50 text-sm mt-1">Escaneie o código ou copie a chave abaixo</p>
+            </div>
+
+            {/* QR Code */}
+            <div className="bg-white p-4 rounded-2xl mx-auto w-fit mb-6 shadow-lg shadow-black/50 border-4 border-white/5">
+              <img src={pixData.qrCode} alt="QR Code PIX" className="w-48 h-48 sm:w-56 sm:h-56" />
+            </div>
+
+            {/* Valor */}
+            <div className="flex justify-between items-center mb-6 px-2">
+              <span className="text-white/40 text-sm">Valor Total</span>
+              <span className="text-white text-xl font-black">R$ {(product.price_brl / 100).toFixed(2).replace('.', ',')}</span>
+            </div>
+
+            {/* Copia e Cola */}
+            <div className="space-y-3">
+              <label className="text-[10px] text-white/30 uppercase tracking-widest font-bold ml-1">Código Pix Copia e Cola</label>
+              <div className="flex bg-white/5 border border-white/10 rounded-xl overflow-hidden focus-within:border-accent/50 transition">
+                <input 
+                  readOnly 
+                  value={pixData.payload}
+                  className="bg-transparent px-4 py-3 text-white text-xs flex-1 outline-none font-mono truncate"
+                />
+                <button 
+                  onClick={() => copy(pixData.payload, 'pix')}
+                  className="bg-accent hover:bg-accent-hover text-black px-4 transition flex items-center justify-center"
+                >
+                  {copied === 'pix' ? <CheckCircle2 size={18} /> : <Copy size={18} />}
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-8 flex items-start gap-3 bg-white/5 p-4 rounded-xl border border-white/5">
+              <Info size={18} className="text-accent shrink-0 mt-0.5" />
+              <p className="text-[11px] text-white/40 leading-relaxed">
+                Após o pagamento, não feche esta página. O sistema detectará o recebimento e entregará seu produto automaticamente em alguns segundos.
+              </p>
+            </div>
+          </div>
+        </div>
       )}
 
       <p className="mt-6 text-[10px] text-white/20 text-center uppercase tracking-widest font-bold">
