@@ -1,7 +1,35 @@
+'use client'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Search, ShoppingCart, User, Gamepad2 } from 'lucide-react'
+import { Search, ShoppingCart, User, Gamepad2, LogOut, LayoutDashboard } from 'lucide-react'
+import { createClient } from '@/utils/supabase/client'
+import { useRouter } from 'next/navigation'
 
 export function Header() {
+  const [user, setUser] = useState<any>(null)
+  const supabase = createClient()
+  const router = useRouter()
+
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      setUser(user)
+    }
+    getUser()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    router.refresh()
+    router.push('/')
+  }
+
   return (
     <header className="sticky top-0 z-50 w-full glass border-b border-white/5 shadow-2xl shadow-black/50">
       <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between gap-6">
@@ -30,10 +58,29 @@ export function Header() {
         
         {/* Actions */}
         <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-          <Link href="/dashboard" className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 transition text-white/80 hover:text-white">
-            <User size={20} />
-            <span className="text-sm font-medium hidden sm:block">Entrar</span>
-          </Link>
+          {user ? (
+            <div className="flex items-center gap-2 sm:gap-4">
+              <Link 
+                href="/dashboard" 
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition text-white border border-white/5"
+              >
+                <LayoutDashboard size={18} className="text-accent" />
+                <span className="text-sm font-medium hidden sm:block">Painel</span>
+              </Link>
+              <button 
+                onClick={handleSignOut}
+                className="p-2 rounded-lg hover:bg-red-500/10 text-white/40 hover:text-red-400 transition"
+                title="Sair"
+              >
+                <LogOut size={18} />
+              </button>
+            </div>
+          ) : (
+            <Link href="/auth/login" className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 transition text-white/80 hover:text-white">
+              <User size={20} />
+              <span className="text-sm font-medium hidden sm:block">Entrar</span>
+            </Link>
+          )}
           
           <button className="flex items-center justify-center w-10 h-10 rounded-full bg-primary text-white hover:bg-primary-hover transition relative shadow-lg shadow-primary/20 hover:shadow-primary/40">
             <ShoppingCart size={18} />
