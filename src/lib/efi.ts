@@ -8,10 +8,11 @@ import path from 'path';
 // Caminho recomendado para Next.js na Netlify
 const certificatePath = path.join(process.cwd(), 'certificates', 'cert.p12');
 
+// Limpeza de variáveis para evitar espaços em branco invisíveis
 const options = {
-  sandbox: process.env.EFI_SANDBOX === 'true',
-  client_id: process.env.EFI_CLIENT_ID || '',
-  client_secret: process.env.EFI_CLIENT_SECRET || '',
+  sandbox: (process.env.EFI_SANDBOX || '').trim() === 'true',
+  client_id: (process.env.EFI_CLIENT_ID || '').trim(),
+  client_secret: (process.env.EFI_CLIENT_SECRET || '').trim(),
   certificate: certificatePath,
   validateMtls: true,
 };
@@ -28,7 +29,7 @@ export async function createImmediatePixCharge(orderId: string, amountBrl: numbe
   const body = {
     calendario: { expiracao: 3600 },
     valor: { original: (amountBrl / 100).toFixed(2) },
-    chave: process.env.EFI_PIX_KEY as string,
+    chave: (process.env.EFI_PIX_KEY || '').trim(),
     solicitacaoPagador: `Pedido #${orderId}`,
     infoAdicionais: [
       { nome: 'Pedido', valor: orderId },
@@ -42,7 +43,7 @@ export async function createImmediatePixCharge(orderId: string, amountBrl: numbe
 
   try {
     // @ts-ignore
-    const charge = await efiPay.pixCreateImmediateCharge([], body);
+    const charge = await efiPay.pixCreateImmediateCharge({}, body);
 
     if (!charge.loc || !charge.loc.id) {
       throw new Error('Falha ao obter location da cobrança Pix');
