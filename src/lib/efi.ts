@@ -1,32 +1,12 @@
 import EfiPay from 'sdk-node-apis-efi';
 import path from 'path';
-import fs from 'fs';
-import os from 'os';
 
 /**
  * Utilitário para integração com a API Pix da Efí Bank (Gerencianet)
  */
 
-// Lógica robusta para o certificado na Netlify/Vercel
-let certificatePath = path.resolve(process.env.EFI_CERT_PATH || './certificates/cert.p12');
-
-if (process.env.EFI_CERT_BASE64) {
-  // Limpar possíveis espaços ou quebras de linha que o usuário possa ter colado sem querer
-  const cleanBase64 = process.env.EFI_CERT_BASE64.trim().replace(/\s/g, '');
-  
-  // Usar um nome único baseado na versão para forçar a atualização se mudar
-  const tempPath = path.join(os.tmpdir(), `cert_${cleanBase64.length}.p12`);
-  
-  if (!fs.existsSync(tempPath)) {
-    try {
-      fs.writeFileSync(tempPath, Buffer.from(cleanBase64, 'base64'));
-      console.log('Certificado temporário criado com sucesso em:', tempPath);
-    } catch (e) {
-      console.error('Erro ao escrever certificado temporário:', e);
-    }
-  }
-  certificatePath = tempPath;
-}
+// Caminho recomendado para Next.js na Netlify
+const certificatePath = path.join(process.cwd(), 'certificates', 'cert.p12');
 
 const options = {
   sandbox: process.env.EFI_SANDBOX === 'true',
@@ -78,7 +58,6 @@ export async function createImmediatePixCharge(orderId: string, amountBrl: numbe
       qrCodeLink: qrCodeData.linkVisualizacao,
     };
   } catch (error: any) {
-    // Se o erro for de certificado, vamos dar uma pista melhor
     const errorMessage = typeof error === 'string' ? error : (error.message || JSON.stringify(error));
     console.error('Efí API Raw Error:', errorMessage);
     throw errorMessage;
