@@ -24,6 +24,7 @@ async function getProducts() {
 
   return data.map(p => ({
     ...p,
+    status: p.active ? 'active' : 'inactive',
     categories: p.product_categories?.map((pc: any) => pc.categories.name) || []
   }))
 }

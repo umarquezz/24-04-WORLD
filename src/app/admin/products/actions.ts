@@ -24,7 +24,7 @@ export async function saveProduct(formData: FormData) {
     description,
     price_brl,
     price_original_brl,
-    status,
+    active: status === 'active',
     image_url,
     platforms
   }
@@ -68,45 +68,67 @@ export async function saveProduct(formData: FormData) {
   }
 
   revalidatePath('/admin/products')
+  revalidatePath('/')
   return { success: true, id: productId }
 }
 
 export async function deleteProduct(id: string) {
-  const supabase = supabaseAdmin()
-  
-  // Check if there are orders for this product
-  const { count, error: countError } = await supabase
-    .from('orders')
-    .select('*', { count: 'exact', head: true })
-    .eq('product_id', id)
-  
-  if (countError) throw new Error(countError.message)
-  
-  if (count && count > 0) {
-    throw new Error('Não é possível excluir um produto que já possui vendas. Tente desativá-lo em vez disso.')
-  }
+  try {
+    const supabase = supabaseAdmin()
+    
+    // 1. Verificar se existem vendas (orders) vinculadas
+    // IMPORTANTE: Se houver venda, não podemos deletar o produto pois ele é o pai da venda
+    const { count, error: countError } = await supabase
+      .from('orders')
+      .select('*', { count: 'exact', head: true })
+      .eq('product_id', id)
+    
+    if (countError) return { error: 'Erro ao verificar vendas: ' + countError.message }
+    
+    if (count && count > 0) {
+      return { error: 'Este produto já possui vendas no histórico. Por segurança, você deve apenas desativá-lo (Status: Inativo) para que ele suma da loja, mas continue no seu registro de vendas.' }
+    }
 
-  const { error } = await supabase
-    .from('products')
-    .delete()
-    .eq('id', id)
-  
-  if (error) throw new Error(error.message)
-  
-  revalidatePath('/admin/products')
-  return { success: true }
+    // 2. Limpar o estoque (credentials) vinculado
+    await supabase
+      .from('credentials')
+      .delete()
+      .eq('product_id', id)
+
+    // 3. Limpar categorias vinculadas
+    await supabase
+      .from('product_categories')
+      .delete()
+      .eq('product_id', id)
+
+    // 4. Excluir o produto de fato
+    const { error } = await supabase
+      .from('products')
+      .delete()
+      .eq('id', id)
+    
+    if (error) {
+      return { error: 'Erro ao excluir do banco: ' + error.message }
+    }
+    
+    revalidatePath('/admin/products')
+    revalidatePath('/')
+    return { success: true }
+  } catch (err: any) {
+    return { error: 'Erro inesperado: ' + err.message }
+  }
 }
 
 export async function updateProductStatus(id: string, status: 'active' | 'inactive') {
   const supabase = supabaseAdmin()
   const { error } = await supabase
     .from('products')
-    .update({ status })
+    .update({ active: status === 'active' })
     .eq('id', id)
   
   if (error) throw new Error(error.message)
   
   revalidatePath('/admin/products')
-  revalidatePath('/') // Also revalidate homepage to reflect changes
+  revalidatePath('/') 
   return { success: true }
 }

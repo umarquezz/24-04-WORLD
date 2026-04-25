@@ -63,8 +63,10 @@ export function ProductsTable({ initialProducts }: { initialProducts: Product[] 
     const nextStatus = currentStatus === 'active' ? 'inactive' : 'active'
     setLoadingId(id)
     try {
-      await updateProductStatus(id, nextStatus)
-      setProducts(products.map(p => p.id === id ? { ...p, status: nextStatus } : p))
+      const res = await updateProductStatus(id, nextStatus)
+      if (res.success) {
+        setProducts(products.map(p => p.id === id ? { ...p, status: nextStatus } : p))
+      }
     } catch (err: any) {
       alert('Erro ao atualizar status: ' + err.message)
     } finally {
@@ -76,10 +78,15 @@ export function ProductsTable({ initialProducts }: { initialProducts: Product[] 
     if (!confirm('Tem certeza que deseja excluir este produto?')) return
     setLoadingId(id)
     try {
-      await deleteProduct(id)
-      setProducts(products.filter(p => p.id !== id))
+      const res = await deleteProduct(id)
+      if (res.error) {
+        alert(res.error)
+      } else {
+        setProducts(products.filter(p => p.id !== id))
+      }
     } catch (err: any) {
-      alert('Erro ao excluir: ' + err.message)
+      alert('Ocorreu um erro inesperado ao tentar excluir.')
+      console.error(err)
     } finally {
       setLoadingId(null)
     }
@@ -118,7 +125,7 @@ export function ProductsTable({ initialProducts }: { initialProducts: Product[] 
                     <div>
                       <h4 className="text-sm font-bold text-white group-hover:text-purple-400 transition-colors">{product.name}</h4>
                       <div className="flex items-center gap-2 mt-1">
-                        {product.platforms.map(p => {
+                        {product.platforms && product.platforms.map(p => {
                           const Config = PLATFORM_ICONS[p]
                           if (!Config) return null
                           return <Config.icon key={p} className={cn("w-3 h-3", Config.color)} title={p.toUpperCase()} />
@@ -130,7 +137,7 @@ export function ProductsTable({ initialProducts }: { initialProducts: Product[] 
                 
                 <td className="px-6 py-4">
                   <div className="flex flex-wrap justify-center gap-1 max-w-[200px] mx-auto">
-                    {product.categories.map(cat => (
+                    {product.categories && product.categories.map(cat => (
                       <span key={cat} className="px-2 py-0.5 rounded text-[8px] bg-purple-500/10 text-purple-400 border border-purple-500/20 font-bold uppercase tracking-tighter">
                         {cat}
                       </span>
