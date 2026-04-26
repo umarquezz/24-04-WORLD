@@ -23,7 +23,7 @@ export default async function Dashboard() {
       products (name), 
       credentials!orders_credential_id_fkey (type, email, password, key_value)
     `)
-    .eq('buyer_email', user.email)
+    .eq('user_id', user.id)
     .eq('status', 'paid')
     .order('created_at', { ascending: false })
 

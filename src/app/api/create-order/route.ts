@@ -60,7 +60,11 @@ export async function POST(req: NextRequest) {
     if (reserveError || !credentialId) {
       // Se não conseguiu reservar, deletamos o pedido rascunho
       await admin.from('orders').delete().eq('id', order.id)
-      return NextResponse.json({ error: 'Produto sem estoque disponível' }, { status: 409 })
+      console.error('Erro de reserva:', reserveError)
+      return NextResponse.json({ 
+        error: 'Produto sem estoque disponível', 
+        details: 'Não há credenciais disponíveis para este produto no momento.' 
+      }, { status: 409 })
     }
 
     // 3. Atualizar o pedido com a credencial reservada
@@ -90,7 +94,7 @@ export async function POST(req: NextRequest) {
         qr_code_image: pixData.qrCodeImage,
       })
     } catch (efiError: any) {
-      console.error('Efí Bank error:', efiError)
+      console.error('Efí Bank full error:', JSON.stringify(efiError, null, 2))
       // Se falhar a criação do PIX, removemos o pedido temporário
       await admin.from('orders').delete().eq('id', order.id)
       return NextResponse.json({ 

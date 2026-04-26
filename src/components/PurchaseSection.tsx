@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { Copy, QrCode, CheckCircle2, ShieldCheck, Loader2, X, Info } from 'lucide-react'
+import { Copy, QrCode, CheckCircle2, ShieldCheck, Loader2, X, Info, ArrowRight, Gamepad2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface Credential {
@@ -28,6 +28,44 @@ export function PurchaseSection({ product, user, supabase, className }: Purchase
   const [credential, setCredential] = useState<Credential | null>(null)
   const [email, setEmail] = useState('')
   const [copied, setCopied] = useState<string | null>(null)
+  const [checkingOrder, setCheckingOrder] = useState(true)
+
+  // Verificar se já existe um pedido pago para este produto ao carregar
+  useEffect(() => {
+    async function checkExisting() {
+      if (!user) {
+        setCheckingOrder(false)
+        return
+      }
+      try {
+        const { data, error } = await supabase
+          .from('orders')
+          .select('id, status, credential_id')
+          .eq('user_id', user.id)
+          .eq('product_id', product.id)
+          .eq('status', 'paid')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single()
+
+        if (data && data.credential_id) {
+          // Buscar a credencial
+          const { data: cred } = await supabase
+            .from('credentials')
+            .select('type, email, password, key_value')
+            .eq('id', data.credential_id)
+            .single()
+          
+          if (cred) setCredential(cred)
+        }
+      } catch (err) {
+        console.error('Erro ao verificar pedido existente:', err)
+      } finally {
+        setCheckingOrder(false)
+      }
+    }
+    checkExisting()
+  }, [product.id, user, supabase])
 
   // Polling para verificar pagamento
   useEffect(() => {
@@ -101,27 +139,33 @@ export function PurchaseSection({ product, user, supabase, className }: Purchase
         <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-green-500/30">
           <CheckCircle2 size={32} className="text-green-400" />
         </div>
-        <h2 className="text-xl sm:text-2xl font-bold text-white mb-2">Pronto para usar!</h2>
-        <p className="text-white/50 text-xs sm:text-sm mb-6">Sua compra foi confirmada com sucesso.</p>
+        
+        <h2 className="text-xl sm:text-2xl font-bold text-white mb-2">Muito obrigado pela compra!</h2>
+        <p className="text-white/50 text-xs sm:text-sm mb-6">Seu pagamento foi confirmado e seu produto já está disponível abaixo.</p>
 
-        <div className="bg-black/40 rounded-xl p-4 sm:p-6 border border-white/5 text-left mb-6">
+        <div className="bg-black/40 rounded-xl p-4 sm:p-6 border border-white/5 text-left mb-8 shadow-inner">
+          <div className="flex items-center gap-2 mb-4 pb-3 border-b border-white/5">
+            <Gamepad2 size={16} className="text-accent" />
+            <span className="text-[10px] text-white/60 uppercase tracking-widest font-bold">Dados de Acesso</span>
+          </div>
+
           {credential.type === 'account' ? (
             <div className="space-y-4">
               <div>
                 <label className="text-[10px] text-white/40 uppercase tracking-widest block mb-1">E-mail</label>
-                <div className="flex bg-white/5 border border-white/10 rounded-lg overflow-hidden">
-                  <span className="px-3 py-2 text-white font-mono text-sm flex-1 truncate">{credential.email}</span>
-                  <button onClick={() => copy(credential.email!, 'email')} className="px-3 hover:bg-white/10 transition text-accent">
-                    {copied === 'email' ? '✓' : <Copy size={14} />}
+                <div className="flex bg-white/5 border border-white/10 rounded-lg overflow-hidden group focus-within:border-accent/30 transition">
+                  <span className="px-3 py-2.5 text-white font-mono text-sm flex-1 truncate">{credential.email}</span>
+                  <button onClick={() => copy(credential.email!, 'email')} className="px-4 hover:bg-white/10 transition text-accent border-l border-white/10">
+                    {copied === 'email' ? 'Copiado!' : <Copy size={14} />}
                   </button>
                 </div>
               </div>
               <div>
                 <label className="text-[10px] text-white/40 uppercase tracking-widest block mb-1">Senha</label>
-                <div className="flex bg-white/5 border border-white/10 rounded-lg overflow-hidden">
-                  <span className="px-3 py-2 text-white font-mono text-sm flex-1 truncate">{credential.password}</span>
-                  <button onClick={() => copy(credential.password!, 'pass')} className="px-3 hover:bg-white/10 transition text-accent">
-                    {copied === 'pass' ? '✓' : <Copy size={14} />}
+                <div className="flex bg-white/5 border border-white/10 rounded-lg overflow-hidden group focus-within:border-accent/30 transition">
+                  <span className="px-3 py-2.5 text-white font-mono text-sm flex-1 truncate">{credential.password}</span>
+                  <button onClick={() => copy(credential.password!, 'pass')} className="px-4 hover:bg-white/10 transition text-accent border-l border-white/10">
+                    {copied === 'pass' ? 'Copiado!' : <Copy size={14} />}
                   </button>
                 </div>
               </div>
@@ -129,15 +173,37 @@ export function PurchaseSection({ product, user, supabase, className }: Purchase
           ) : (
             <div>
               <label className="text-[10px] text-white/40 uppercase tracking-widest block mb-1">Key / Chave / Link</label>
-              <div className="flex bg-white/5 border border-white/10 rounded-lg overflow-hidden">
-                <span className="px-3 py-3 text-white font-mono text-xs flex-1 break-all border-r border-white/10">{credential.key_value}</span>
-                <button onClick={() => copy(credential.key_value!, 'key')} className="px-3 hover:bg-white/10 transition text-accent shrink-0">
-                  {copied === 'key' ? '✓' : <Copy size={14} />}
+              <div className="flex bg-white/5 border border-white/10 rounded-lg overflow-hidden group focus-within:border-accent/30 transition">
+                <span className="px-3 py-3.5 text-white font-mono text-xs flex-1 break-all border-r border-white/10 leading-relaxed">{credential.key_value}</span>
+                <button onClick={() => copy(credential.key_value!, 'key')} className="px-4 hover:bg-white/10 transition text-accent shrink-0">
+                  {copied === 'key' ? 'Copiado!' : <Copy size={14} />}
                 </button>
               </div>
             </div>
           )}
         </div>
+
+        <div className="space-y-3">
+          <a 
+            href="/dashboard" 
+            className="w-full bg-primary hover:bg-primary-hover text-white font-bold py-4 rounded-xl transition shadow-lg shadow-primary/20 text-sm flex items-center justify-center gap-2 group"
+          >
+            ACESSAR MINHAS COMPRAS
+            <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+          </a>
+          <p className="text-[10px] text-white/30 uppercase tracking-widest font-medium">
+            Você também pode acessar seus produtos a qualquer momento pelo menu superior.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  if (checkingOrder) {
+    return (
+      <div className={cn("bg-white/5 border border-white/10 rounded-2xl p-8 flex flex-col items-center justify-center min-h-[200px]", className)}>
+        <Loader2 className="animate-spin text-accent mb-4" size={32} />
+        <p className="text-white/50 text-xs uppercase tracking-widest font-bold">Verificando status...</p>
       </div>
     )
   }
