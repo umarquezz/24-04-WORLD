@@ -36,8 +36,18 @@ export function CheckoutModal({ product, user, supabase, onClose }: CheckoutModa
       try {
         const res = await fetch(`/api/order-status/${orderId}`)
         const data = await res.json()
-        if (data.status === 'paid' && data.credential) {
-          setCredential(data.credential)
+        if (data.status === 'paid') {
+          if (data.credential) {
+            setCredential(data.credential)
+          } else {
+            // Se estiver pago mas sem credencial no JSON (raro, mas possível)
+            // Vamos recarregar a página ou mostrar um aviso
+            setError('Pagamento confirmado! Suas credenciais estão sendo liberadas. Se não aparecerem em instantes, verifique seu histórico.')
+            // Podemos forçar o fechamento após um tempo para o usuário ver o histórico
+            setTimeout(() => {
+              window.location.href = '/dashboard'
+            }, 3000)
+          }
           setPolling(false)
         }
       } catch (err) { }

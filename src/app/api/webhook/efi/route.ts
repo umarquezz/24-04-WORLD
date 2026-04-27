@@ -46,9 +46,11 @@ export async function POST(req: NextRequest) {
         .single()
 
       if (orderError || !order) {
-        console.error(`[Efí Webhook] Pedido não encontrado para txid: ${txid}`)
+        console.error(`[Efí Webhook] Pedido NÃO ENCONTRADO no banco para txid: ${txid}. Verifique se o txid está correto.`)
         continue
       }
+
+      console.log(`[Efí Webhook] Pedido encontrado: ID ${order.id}, Status Atual: ${order.status}`)
 
       // Ignorar se já foi processado
       if (order.status === 'paid') {
@@ -56,41 +58,54 @@ export async function POST(req: NextRequest) {
         continue
       }
 
-      // 1. Usar a credencial que foi reservada na criação do pedido
-      let credentialId = order.credential_id;
+      // 1. Identificar a credencial (preferência pela que já está no pedido)
+      let credentialId = order.credential_id
 
-      // Se por algum motivo não tiver reservado (fallback de segurança)
+      // Fallback: Se não tiver credencial no pedido, buscar uma disponível do mesmo produto
       if (!credentialId) {
-        console.warn(`[Efí Webhook] Pedido ${order.id} não possui credencial reservada. Buscando disponível...`);
+        console.warn(`[Efí Webhook] Pedido ${order.id} sem credencial_id. Buscando fallback...`)
         const { data: fallbackCred } = await admin
           .from('credentials')
           .select('id')
           .eq('product_id', order.product_id)
           .eq('sold', false)
           .limit(1)
-          .single();
+          .single()
         
-        credentialId = fallbackCred?.id;
+        credentialId = fallbackCred?.id
       }
 
       if (!credentialId) {
-        console.error(`[Efí Webhook] SEM ESTOQUE para produto: ${order.product_id} (txid: ${txid}). O cliente pagou e não há item disponível!`);
-        // Marca o pedido como pago mesmo sem estoque para registro financeiro. A entrega terá que ser manual.
+        console.error(`[Efí Webhook] ERRO CRÍTICO: Cliente pagou pedido ${order.id} mas não há estoque disponível!`)
+        // Marcamos como pago para registro financeiro, mas sem credencial (entrega manual necessária)
         await admin
           .from('orders')
-          .update({ status: 'paid', paid_at: new Date().toISOString() })
+          .update({ 
+            status: 'paid', 
+            paid_at: new Date().toISOString(),
+            notes: 'PAGO SEM ESTOQUE - ENTREGA MANUAL NECESSÁRIA'
+          })
           .eq('id', order.id)
         continue
       }
 
-      // 2. Marcar credencial como vendida e vincular ao pedido (garantir vínculo)
-      await admin
+      console.log(`[Efí Webhook] Vinculando credencial ${credentialId} ao pedido ${order.id}...`)
+
+      // 2. Marcar credencial como vendida e vincular ao pedido
+      const { error: credUpdateError } = await admin
         .from('credentials')
-        .update({ sold: true, order_id: order.id })
+        .update({ 
+          sold: true, 
+          order_id: order.id 
+        })
         .eq('id', credentialId)
 
-      // 3. Marcar pedido como pago e garantir o vínculo com a credencial entregue
-      await admin
+      if (credUpdateError) {
+        console.error(`[Efí Webhook] Erro ao atualizar credencial ${credentialId}:`, credUpdateError)
+      }
+
+      // 3. Marcar pedido como pago e garantir o vínculo com a credencial
+      const { error: finalUpdateError } = await admin
         .from('orders')
         .update({
           status: 'paid',
@@ -99,7 +114,11 @@ export async function POST(req: NextRequest) {
         })
         .eq('id', order.id)
 
-      console.log(`[Efí Webhook] ✅ Pedido ${order.id} confirmado. Credencial ${credentialId} entregue.`)
+      if (finalUpdateError) {
+        console.error(`[Efí Webhook] Erro final ao atualizar pedido ${order.id}:`, finalUpdateError)
+      } else {
+        console.log(`[Efí Webhook] ✅ Pedido ${order.id} confirmado com sucesso.`)
+      }
     }
 
     return NextResponse.json({ received: true })

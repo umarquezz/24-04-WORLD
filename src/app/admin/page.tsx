@@ -8,6 +8,7 @@ import {
   ArrowUpRight,
   TicketPercent 
 } from 'lucide-react'
+import { WebhookManager } from './WebhookManager'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,7 +28,7 @@ async function getMetrics() {
   const { count: activeProducts } = await supabase
     .from('products')
     .select('*', { count: 'exact', head: true })
-    .eq('status', 'active')
+    .eq('active', true)
 
   // Keys disponíveis
   const { count: availableKeys } = await supabase
@@ -104,19 +105,24 @@ export default async function AdminDashboard() {
           </div>
         </div>
 
-        <div className="bg-[#111118] border border-white/5 rounded-2xl p-8">
-          <h3 className="text-lg font-bold mb-6">Ações Rápidas</h3>
-          <div className="space-y-3">
-            <button className="w-full flex items-center gap-3 p-4 rounded-xl bg-white/5 hover:bg-white/10 transition-all text-sm font-medium border border-white/5">
-              <Package className="w-4 h-4 text-purple-400" /> Adicionar Produto
-            </button>
-            <button className="w-full flex items-center gap-3 p-4 rounded-xl bg-white/5 hover:bg-white/10 transition-all text-sm font-medium border border-white/5">
-              <Key className="w-4 h-4 text-blue-400" /> Repor Estoque
-            </button>
-            <button className="w-full flex items-center gap-3 p-4 rounded-xl bg-white/5 hover:bg-white/10 transition-all text-sm font-medium border border-white/5">
-              <TicketPercent className="w-4 h-4 text-pink-400" /> Criar Cupom
-            </button>
+        <div className="space-y-6">
+          <div className="bg-[#111118] border border-white/5 rounded-2xl p-8">
+            <h3 className="text-lg font-bold mb-6">Ações Rápidas</h3>
+            <div className="space-y-3">
+              <button className="w-full flex items-center gap-3 p-4 rounded-xl bg-white/5 hover:bg-white/10 transition-all text-sm font-medium border border-white/5">
+                <Package className="w-4 h-4 text-purple-400" /> Adicionar Produto
+              </button>
+              <button className="w-full flex items-center gap-3 p-4 rounded-xl bg-white/5 hover:bg-white/10 transition-all text-sm font-medium border border-white/5">
+                <Key className="w-4 h-4 text-blue-400" /> Repor Estoque
+              </button>
+              <button className="w-full flex items-center gap-3 p-4 rounded-xl bg-white/5 hover:bg-white/10 transition-all text-sm font-medium border border-white/5">
+                <TicketPercent className="w-4 h-4 text-pink-400" /> Criar Cupom
+              </button>
+            </div>
           </div>
+
+          {/* Gerenciador de Webhook Automático */}
+          <WebhookManager />
         </div>
       </div>
     </div>

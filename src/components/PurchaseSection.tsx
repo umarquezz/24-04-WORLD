@@ -318,11 +318,40 @@ export function PurchaseSection({ product, user, supabase, className }: Purchase
               </div>
             </div>
 
-            <div className="mt-8 flex items-start gap-3 bg-white/5 p-4 rounded-xl border border-white/5">
-              <Info size={18} className="text-accent shrink-0 mt-0.5" />
-              <p className="text-[11px] text-white/40 leading-relaxed">
-                Após o pagamento, não feche esta página. O sistema detectará o recebimento e entregará seu produto automaticamente em alguns segundos.
-              </p>
+            <div className="mt-8 space-y-4">
+              <button 
+                onClick={async () => {
+                  setLoading(true);
+                  try {
+                    const res = await fetch(`/api/order-status/${orderId}`);
+                    const data = await res.json();
+                    if (data.status === 'paid') {
+                      if (data.credential) {
+                        setCredential(data.credential);
+                        setPolling(false);
+                        setPixData(null);
+                      } else {
+                        setError("Pagamento confirmado, mas estamos finalizando a entrega do seu item. Aguarde um instante...");
+                      }
+                    } else {
+                      // Opcional: mostrar um toast ou mensagem temporária
+                    }
+                  } catch (err) {}
+                  setLoading(false);
+                }}
+                disabled={loading}
+                className="w-full py-3 rounded-xl bg-white/5 border border-white/10 text-white/60 text-xs font-bold hover:bg-white/10 hover:text-white transition flex items-center justify-center gap-2"
+              >
+                {loading ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+                JÁ PAGUEI, VERIFICAR AGORA
+              </button>
+
+              <div className="flex items-start gap-3 bg-white/5 p-4 rounded-xl border border-white/5">
+                <Info size={18} className="text-accent shrink-0 mt-0.5" />
+                <p className="text-[11px] text-white/40 leading-relaxed">
+                  Após o pagamento, não feche esta página. O sistema detectará o recebimento e entregará seu produto automaticamente em alguns segundos.
+                </p>
+              </div>
             </div>
           </div>
         </div>

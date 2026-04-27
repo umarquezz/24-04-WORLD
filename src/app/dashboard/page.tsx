@@ -19,13 +19,26 @@ export default async function Dashboard() {
   const { data: orders, error } = await admin
     .from('orders')
     .select(`
-      id, created_at, status, 
+      id, 
+      created_at, 
+      status, 
+      product_id,
+      credential_id,
       products (name), 
-      credentials!orders_credential_id_fkey (type, email, password, key_value)
+      credentials!orders_credential_id_fkey (
+        type, 
+        email, 
+        password, 
+        key_value
+      )
     `)
     .eq('user_id', user.id)
     .eq('status', 'paid')
     .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Dashboard error:', error)
+  }
 
   return (
     <div className="flex flex-col font-sans">
@@ -80,14 +93,17 @@ export default async function Dashboard() {
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
               {orders.map((order: any) => {
+                // Supabase returns credentials as an object if single, or array if multiple.
+                // With the join !orders_credential_id_fkey, it should be an object.
                 const cred = order.credentials
+                
                 return (
                   <div key={order.id} className="bg-card border border-card-border rounded-xl p-5 relative overflow-hidden group hover:border-primary/40 transition">
                     <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-primary to-accent opacity-50" />
                     
                     <div className="flex justify-between items-start mb-4 pl-2">
                       <div>
-                        <h2 className="font-bold text-lg text-white">{order.products?.name}</h2>
+                        <h2 className="font-bold text-lg text-white">{order.products?.name || 'Produto Adquirido'}</h2>
                         <div className="flex items-center gap-1.5 mt-1 text-xs text-white/40">
                           <Calendar size={12} />
                           {new Date(order.created_at).toLocaleDateString()}
@@ -97,21 +113,30 @@ export default async function Dashboard() {
                     </div>
 
                     <div className="pl-2 pt-2 border-t border-white/5 mt-4">
-                      {cred?.type === 'account' ? (
-                        <div className="space-y-3 mt-3">
-                          <div>
-                            <label className="text-[10px] text-white/40 uppercase tracking-widest block mb-1">E-mail</label>
-                            <p className="bg-background px-3 py-2 rounded-lg font-mono text-sm text-white select-all border border-white/5">{cred.email}</p>
-                          </div>
-                          <div>
-                            <label className="text-[10px] text-white/40 uppercase tracking-widest block mb-1">Senha</label>
-                            <p className="bg-background px-3 py-2 rounded-lg font-mono text-sm text-white select-all border border-white/5">{cred.password}</p>
-                          </div>
-                        </div>
+                      {cred ? (
+                        <>
+                          {cred.type === 'account' ? (
+                            <div className="space-y-3 mt-3">
+                              <div>
+                                <label className="text-[10px] text-white/40 uppercase tracking-widest block mb-1">E-mail</label>
+                                <p className="bg-background px-3 py-2 rounded-lg font-mono text-sm text-white select-all border border-white/5">{cred.email}</p>
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-white/40 uppercase tracking-widest block mb-1">Senha</label>
+                                <p className="bg-background px-3 py-2 rounded-lg font-mono text-sm text-white select-all border border-white/5">{cred.password}</p>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="mt-3">
+                              <label className="text-[10px] text-white/40 uppercase tracking-widest block mb-1">Status da Key / Chave</label>
+                              <p className="bg-background px-3 py-3 rounded-lg font-mono text-sm text-accent select-all border border-white/5 break-all">{cred.key_value}</p>
+                            </div>
+                          )}
+                        </>
                       ) : (
-                        <div className="mt-3">
-                          <label className="text-[10px] text-white/40 uppercase tracking-widest block mb-1">Status da Key</label>
-                          <p className="bg-background px-3 py-3 rounded-lg font-mono text-sm text-accent select-all border border-white/5 break-all">{cred?.key_value}</p>
+                        <div className="mt-3 p-3 bg-yellow-500/5 border border-yellow-500/10 rounded-lg">
+                          <p className="text-[10px] text-yellow-500/80 uppercase font-bold text-center">Aguardando liberação dos dados</p>
+                          <p className="text-[9px] text-white/30 text-center mt-1">Se o problema persistir, contate o suporte.</p>
                         </div>
                       )}
                     </div>

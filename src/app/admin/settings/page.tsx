@@ -1,6 +1,8 @@
 import { getSiteSettings } from './actions'
 import { SettingsForm } from './SettingsForm'
 import { PromoPopupForm } from './PromoPopupForm'
+import { EfiWebhookManager } from './EfiWebhookManager'
+import { Wallet } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -48,6 +50,16 @@ export default async function SettingsPage() {
         </h3>
         
         <PromoPopupForm initialData={promoPopupData} />
+      </div>
+
+      {/* Payment Settings Section */}
+      <div className="bg-[#111118] border border-white/5 rounded-3xl p-8 shadow-2xl">
+        <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-3">
+          <div className="w-1.5 h-6 bg-green-500 rounded-full"></div>
+          Configurações de Pagamento (Efí Bank)
+        </h3>
+        
+        <EfiWebhookManager />
       </div>
     </div>
   )
