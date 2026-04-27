@@ -5,8 +5,6 @@ import { headers } from 'next/headers'
 import { supabaseAdmin } from '@/lib/supabase'
 import efi from '@/lib/efi'
 
-export const dynamic = 'force-dynamic'
-
 export async function getSiteSettings(key: string) {
   const supabase = supabaseAdmin()
   const { data } = await supabase
